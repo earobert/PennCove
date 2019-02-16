@@ -1,0 +1,384 @@
+# To do:
+# combine 1m and 7m into 1 dataframe given date... this will help make better graphs... 
+# I installed a new pH sensor around 9/1
+
+# Packages required:
+# install.packages("data.table")
+# install.packages("plotly")
+
+library(data.table)
+library(plotly)
+
+# This will 
+# 1. import the .dat files for 1m and 7m
+# 2. perform quality control for the data
+# 3. plot the data (may call a separate function)
+# 4. create an index of mussel "happiness" (2 spp 2 depths)
+# 5. graph the index of mussel "happiness"
+# 6. graph will be uploaded to website
+
+
+#====
+# To upload from file on computer
+#====
+setwd("~/Dropbox/MUSSEL FARM YSI SENSORS & MUSSELS/PENN COVE/Data/PC SONDE/SONDE data")
+df <- read.table(file = "1m_180420.txt", header = T, sep = ",", skip = 1, stringsAsFactors = FALSE)
+head(df)
+dim(df)
+df.unit <- df[1,]
+df.data <- df[3:nrow(df),]
+head(df.data)
+head(df.unit)
+df.data_1m <- df.data
+
+df <- read.table(file = "7m_180420.txt", header = T, sep = ",", skip = 1, stringsAsFactors = FALSE)
+head(df)
+dim(df)
+df.unit <- df[1,]
+df.data <- df[3:nrow(df),]
+head(df.data)
+head(df.unit)
+df.data_7m <- df.data
+#====
+
+# #====
+# # To upload from internet (slower but can be RT)
+# #====
+# library(data.table)
+# df <- fread("http://water.penncoveshellfish.com/water_data/UW_Radio_UWTable1.dat", header = T, sep = ",", skip = 1, stringsAsFactors = FALSE)
+# head(df)
+# dim(df)
+# df.unit <- df[1,]
+# df.data <- df[3:nrow(df),]
+# head(df.data)
+# head(df.unit)
+# df.data_1m <- df.data
+# 
+# df <- fread("http://water.penncoveshellfish.com/water_data/UW_Radio_UWTable3.dat", header = T, sep = ",", skip = 1, stringsAsFactors = FALSE)
+# head(df)
+# dim(df)
+# df.unit <- df[1,]
+# df.data <- df[3:nrow(df),]
+# head(df.data)
+# head(df.unit)
+# df.data_7m <- df.data
+# #====
+
+#====
+#Structure the data
+#====
+data_structure <- function (df.data) {
+  head(df.data) 
+  formatted <- as.character(df.data[,1])
+  df.data[,1] <- as.POSIXct(as.character(df.data[,1]), format = "%Y-%m-%d %H:%M:%S", origin = "1960-01-01")
+  for ( i in 2:ncol(df.data)) {
+    df.data[,i] <- as.numeric(df.data[,i])
+  }
+  return(df.data)
+}
+
+#df.data_1m <- df.data
+
+df.data_1m <- data_structure(df.data_1m)
+str(df.data_1m)
+head(df.data_1m)
+dim(df.data_1m)
+
+df.data_7m <- data_structure(df.data_7m)
+str(df.data_7m)
+head(df.data_1m)
+dim(df.data_1m)
+
+
+#====
+#Preliminary plot of temp data
+#====
+plot(df.data_1m$TIMESTAMP,df.data_1m$TempC, pch = 1)
+points(df.data_7m$TIMESTAMP, df.data_7m$TempC, col = "grey", pch = 1)
+
+#====
+# Quality control based on unrealistic temperature data (assume all data temp sensitive)
+#====
+df.data_7m[df.data_7m$TempC<5,c("TIMESTAMP", "TempC")]
+head(df.data_7m[df.data_7m$TempC>100 & !is.na(df.data_7m$TempC),c("TIMESTAMP", "TempC")])
+df.data_7m[df.data_7m$TempC>14 & !is.na(df.data_7m$TempC),c("TIMESTAMP", "TempC")]
+
+df.data_7m$TempC[df.data_7m$TIMESTAMP >= as.POSIXct("2015-04-01 01:00:00") & df.data_7m$TIMESTAMP <= as.POSIXct("2015-06-10 01:00:00")] <- 0
+df.data_7m$TempC[df.data_7m$TIMESTAMP >= as.POSIXct("2015-02-04 01:00:00") & df.data_7m$TIMESTAMP <= as.POSIXct("2015-02-06 01:00:00")] <- 0
+df.data_7m$TempC[df.data_7m$TIMESTAMP >= as.POSIXct("2015-02-23 01:00:00") & df.data_7m$TIMESTAMP <= as.POSIXct("2015-02-25 01:00:00")] <- 0
+
+df.data_7m[df.data_7m$TempC <= 0, c("Temp", "TempC", "Cond", "SpCond", "Sal", "BGAPERFU","BGAPEug","ChlRFU","Chlug","pH", "DOpct", "DOmgl", "ODOlocal")] <- NA
+
+df.data_1m[df.data_1m$TempC<1,c("TIMESTAMP", "TempC")]
+df.data_1m$TempC[df.data_1m$TIMESTAMP >= as.POSIXct("2014-08-13 01:00:00") & df.data_1m$TIMESTAMP <= as.POSIXct("2014-08-15 01:00:00")] <- 0
+df.data_1m[df.data_1m$TempC <= 1, c("Temp","TempC", "Cond", "SpCond", "Sal", "BGAPERFU","BGAPEug","ChlRFU","Chlug","pH", "DOpct", "DOmgl", "ODOlocal")] <- NA
+#c("Temp", "Cond", "SpCond", "Sal", "BGAPERFU","BGAPEug","ChlRFU","Chlug","pH", "DOpct", "DOmgl", "ODOlocal")
+
+#====
+# Quality control based on unrealistic pHm DO or Sal data (Sal may affect pH, DO meas... but actually Emily said no, may affect saturation calcs)
+#====
+df.data_1m[df.data_1m$pH>10,c("TIMESTAMP", "pH")]
+df.data_1m$pH[df.data_1m$TIMESTAMP >= "2015-07-06" & df.data_1m$TIMESTAMP <= "2015-07-23"] <- NA
+
+df.data_1m[df.data_1m$pH<6.5,c("TIMESTAMP", "pH")]
+df.data_1m$pH[df.data_1m$TIMESTAMP >= "2014-08-13" & df.data_1m$TIMESTAMP <= "2014-08-15"] <- NA
+df.data_1m$pH[df.data_1m$TIMESTAMP >= "2015-07-05" & df.data_1m$TIMESTAMP <= "2015-08-27"] <- NA
+
+df.data_1m[df.data_1m$DOmgl<.5,c("TIMESTAMP", "DOmgl")]
+df.data_1m$DOmgl[df.data_1m$TIMESTAMP >= "2015-07-01" & df.data_1m$TIMESTAMP <= "2015-08-06"] <- NA
+df.data_1m$DOpct[df.data_1m$TIMESTAMP >= "2015-07-01" & df.data_1m$TIMESTAMP <= "2015-08-06"] <- NA
+df.data_1m$ODOlocal[df.data_1m$TIMESTAMP >= "2015-07-01" & df.data_1m$TIMESTAMP <= "2015-08-06"] <- NA
+
+df.data_1m[df.data_1m$Sal>35,c("TIMESTAMP", "Sal")]
+df.data_1m$Sal[df.data_1m$TIMESTAMP >= "2014-08-06" & df.data_1m$TIMESTAMP <= "2014-08-15"] <- 0
+df.data_1m$Sal[df.data_1m$TIMESTAMP >= "2015-06-08" & df.data_1m$TIMESTAMP <= "2015-06-10"] <- 0
+df.data_1m[df.data_1m$Sal<5,c("TIMESTAMP")]
+df.data_1m$Sal[df.data_1m$TIMESTAMP >= "2015-06-09" & df.data_1m$TIMESTAMP <= "2015-07-06"] <- 0
+
+df.data_1m$Sal[df.data_1m$Sal <= 0 ] <- NA
+df.data_1m$Cond[df.data_1m$Sal <= 0 ] <- NA
+df.data_1m$ODOlocal[df.data_1m$Sal <= 0] <- NA
+df.data_1m$DOpct[df.data_1m$Sal <= 0] <- NA
+df.data_1m$DOmgl[df.data_1m$Sal <= 0] <- NA
+
+# QC1 <- df.data_7m[df.data_1m$TIMESTAMP >= "2016-07-10" & df.data_1m$TIMESTAMP <= "2016-7-",]
+# plot(QC1$Chlug, pch = ".")
+
+head(df.data_1m)
+str(df.data_1m)
+
+#====
+# Combine 1m and 7m dataframes by timestamp
+#====
+df.all <- merge(x = df.data_1m,y = df.data_7m, by.x = "TIMESTAMP", by.y = "TIMESTAMP", suffixes = c("_1m","_7m"))
+head(df.all)
+str(df.all)
+
+df.all.recent <- df.all[df.all$TIMESTAMP>="2016-01-01",]
+df.all <- df.all.recent
+#====
+# Plots
+#====
+#temp
+plot(df.all$TIMESTAMP,df.all$TempC_1m, col = "blue", pch = 21, cex = .2, ylab = "Temp deg C")
+points(df.all$TIMESTAMP,df.all$TempC_7m, col = "black", pch = 21, cex = .2)
+
+
+# DOmg/l 
+plot(df.data_1m$TIMESTAMP,df.data_1m$DOmgl, col = "blue", ylab = "DO mg/L", pch = 21, cex = .2, ylim = c(0,20))
+points(df.data_7m$TIMESTAMP, df.data_7m$DOmgl, col = "black", pch = 21, cex = .2)
+df.data_1m[df.data_1m$DOmgl<.5,c("TIMESTAMP", "DOmgl")]
+
+#DO % sat local
+plot(df.data_1m$TIMESTAMP,df.data_1m$ODOlocal, col = "blue", pch = 21, cex = .2, ylab = "% Sat local", 
+     ylim = c(0,200), xlab = "Date")
+points(df.data_7m$TIMESTAMP, df.data_7m$ODOlocal, col = "black", pch = 21, cex = .2)
+
+# df.data_7m_new <- df.data_7m[df.data_7m$TIMESTAMP >= "2016-09-01",]
+# df.data_1m_new <- df.data_1m[df.data_1m$TIMESTAMP >= "2016-09-01",]
+# head(df.data_7m_new)
+
+df.all_new <- df.all[df.all$TIMESTAMP >= "2018-01-01",]
+head(df.all_new)
+
+plot(df.data_7m$pH, df.data_7m$ODOlocal, pch = 21, cex = .2, xlab = "pH", ylab = "Dissolved oxygen, % sat local")
+points(df.data_1m$pH, df.data_1m$ODOlocal, col = "blue", pch = 21, cex = .2)
+points(df.data_1m_new$pH, df.data_1m_new$ODOlocal, col = "yellow", pch = 21, cex = .2)
+points(df.data_7m_new$pH, df.data_7m_new$ODOlocal, col = "orange", pch = 21, cex = .2)
+legend(x = "topleft", legend = c("1m since 2014", "7m since 2014", "1m since Sep 2016", "7m since Sep 2016"), pch = 19, cex = 1, col = c("blue", "black", "yellow", "orange"))
+
+
+
+plot(df.data_7m$pH, df.data_7m$DOmgl, pch = 21, cex = .2, xlab = "pH", ylab = "Dissolved oxygen, mg/L")
+points(df.data_1m$pH, df.data_1m$DOmgl, col = "blue", pch = 21, cex = .2)
+points(df.data_1m_new$pH, df.data_1m_new$DOmgl, col = "yellow", pch = 21, cex = .2)
+points(df.data_7m_new$pH, df.data_7m_new$DOmgl, col = "orange", pch = 21, cex = .2)
+legend(x = "topleft", legend = c("1m since 2014", "7m since 2014", "1m since Sep 2016", "7m since Sep 2016"), pch = 19, cex = 1, col = c("blue", "black", "yellow", "orange"))
+
+strat_index <- df.all$TempC_1m - df.all$TempC_7m
+strat_index_new <- df.all_new$TempC_1m - df.all_new$TempC_7m
+
+par(mfrow = c(1,2))
+plot(strat_index, df.all$ODOlocal_7m, pch = 21, cex = .2, xlab = "Stratification index", ylab = "Dissolved oxygen, % sat local")
+points(strat_index, df.all$ODOlocal_1m, col = "blue", pch = 21, cex = .2)
+points(strat_index_new, df.all_new$ODOlocal_1m, col = "yellow", pch = 21, cex = .2)
+points(strat_index_new, df.all_new$ODOlocal_7m, col = "orange", pch = 21, cex = .2)
+legend(x = "topleft", legend = c("1m since 2014", "7m since 2014", "1m since Sep 2016", "7m since Sep 2016"), pch = 19, cex = 1, col = c("blue", "black", "yellow", "orange"))
+
+plot(strat_index, df.all$pH_7m, pch = 21, cex = .2, xlab = "Stratification index", ylab = "pH")
+points(strat_index, df.all$pH_1m, col = "blue", pch = 21, cex = .2)
+points(strat_index_new, df.all_new$pH_1m, col = "yellow", pch = 21, cex = .2)
+points(strat_index_new, df.all_new$pH_7m, col = "orange", pch = 21, cex = .2)
+legend(x = "topleft", legend = c("1m since 2014", "7m since 2014", "1m since Sep 2016", "7m since Sep 2016"), pch = 19, cex = 1, col = c("blue", "black", "yellow", "orange"))
+
+
+
+plot(df.data_1m$TIMESTAMP,df.data_1m$DOpct, col = "green", pch = ".", ylab = "DO pct")
+points(df.data_7m$TIMESTAMP, df.data_7m$DOpct, col = "blue", pch = ".")
+
+par(mfrow = c(1,2), omi = c(.5,.5,0,0), mar = c(3,3,1,1))
+# plot over time
+plot(df.data_1m$TIMESTAMP,df.data_1m$ODOlocal, 
+     col = "green", pch = ".", ylab = "DO local", ylim = c(0,200), xlab = "Time")
+points(df.data_7m$TIMESTAMP, df.data_7m$ODOlocal, col = "blue", pch = ".")
+
+# polished
+plot(df.data_7m$ODOlocal, df.data_7m$pH, col = "blue", pch = 21, cex = .1,
+     xlab = "Dissolved oxygen, % sat local", ylab = "pH")
+points(df.data_1m$ODOlocal, df.data_1m$pH+0.005, col = "green", pch = 21, cex = .1)
+legend(x = "topleft", legend = c("1m", "7m"), pch = 19, cex = 1, col = c("green", "blue"))
+
+
+
+# pH
+plot(df.data_1m$TIMESTAMP,df.data_1m$pH, col = "green", pch = ".", ylim = c(6.5,9), ylab = "pH")
+points(df.data_7m$TIMESTAMP, df.data_7m$pH, col = "blue", pch = ".")
+
+
+night_1m <- df.data_1m[(strftime(df.data_1m$TIMESTAMP, format = "%H:%M:%S"))=="02:00:00",]
+day_1m <- df.data_1m[(strftime(df.data_1m$TIMESTAMP, format = "%H:%M:%S"))=="14:00:00",]
+night_7m <- df.data_7m[(strftime(df.data_7m$TIMESTAMP, format = "%H:%M:%S"))=="02:00:00",]
+day_7m <- df.data_7m[(strftime(df.data_7m$TIMESTAMP, format = "%H:%M:%S"))=="14:00:00",]
+
+# Night and day... not super different - change in pH may have to do with water body exchange and tides
+plot(night_1m$TIMESTAMP,night_1m$pH, col = "blue", pch = 1, ylim = c(6.5,9), ylab = "pH")
+points(day_1m$TIMESTAMP, day_1m$pH, col = "light green", pch = 1)
+plot(night_7m$TIMESTAMP,night_7m$pH, col = "dark blue", pch = 21, ylim = c(6.5,9), ylab = "pH")
+points(day_7m$TIMESTAMP, day_7m$pH, col = "dark green", pch = 21)
+
+plot(night_1m$Sal,night_1m$pH, col = "blue", pch = 1, ylim = c(6.5,9), ylab = "pH")
+points(day_1m$Sal, day_1m$pH, col = "light green", pch = 1)
+
+plot(night_1m$TempC,night_1m$pH, col = "blue", pch = 1, ylim = c(6.5,9), ylab = "pH")
+points(day_1m$TempC, day_1m$pH, col = "light green", pch = 1)
+
+plot(night_1m$Sal,night_1m$TempC, col = "blue", pch = 1)
+points(day_1m$Sal, day_1m$TempC, col = "light green", pch = 1)
+
+# Chl
+plot(df.data_1m$TIMESTAMP,df.data_1m$Chlug, col = "green", pch = ".", ylab = "Log of chlorophyll (ug/L)")
+points(df.data_7m$TIMESTAMP,df.data_7m$Chlug, col = "blue", pch = ".")
+
+plot(df.data_1m$TIMESTAMP,log(df.data_1m$Chlug+10), col = "green", pch = ".", ylab = "Log of chlorophyll (ug/L)")
+points(df.data_7m$TIMESTAMP, log(df.data_7m$Chlug+10), col = "blue", pch = ".")
+# I'm not sure about the most recent peak and also the drop of 2 in 2015
+
+# Salinity
+plot(df.data_1m$TIMESTAMP,df.data_1m$Sal, col = "green", pch = 1, cex = .2, ylab = "Salinity")
+points(df.data_7m$TIMESTAMP, df.data_7m$Sal, col = "blue", pch = 1, cex = .2)
+# The most recent drop in salinity at depth is probably in error (why would it be stratified that way?) Clean sensor head. 
+
+#====
+par(mfrow = c(1,1))
+
+# Temp response index - dummy functions (Actual functions can be obtained from Fly and Hilbish)
+# 1m: gallo
+x <- df.data_1m$TempC
+m <- 6/20
+b <- -2
+y <- m * x + b #Should be 5 pt curve, and actual growth should depend inversely with si
+plot(df.data_1m$TIMESTAMP, y, col = "light green", pch = ".", ylab = "Temperature response index (SFG J/h)", ylim = c(-1,5))
+
+# 1m: tross
+x <- df.data_1m$TempC
+m <- -2/20
+b <- 1
+y <- m * x + b #Should be 5 pt curve, and actual growth should depend inversely with si
+points(df.data_1m$TIMESTAMP, y, col = "light grey", pch = ".")
+
+# 7m: gallo
+x <- df.data_7m$TempC
+m <- 6/20
+b <- -2
+y <- m * x + b #Should be 5 pt curve, and actual growth should depend inversely with si
+points(df.data_7m$TIMESTAMP, y, col = "dark green", pch = ".")
+
+# 7m: tross
+x <- df.data_7m$TempC
+m <- -2/20
+b <- 1
+y <- m * x + b #Should be 5 pt curve, and actual growth should depend inversely with si
+points(df.data_7m$TIMESTAMP, y, col = "black", pch = ".")
+
+legend(x = "topleft",legend = c("1m gallo", "7m gallo", "1m tross", "7m tross"),
+       col = c("light green", "dark green", "light grey", "black") , pch = 21)
+
+#==== 
+# DO response index - dummy index
+plot(df.data_1m$TIMESTAMP,log(df.data_1m$ODOlocal), col = "green", pch = ".", ylab = "DO local")
+points(df.data_7m$TIMESTAMP, log(df.data_7m$ODOlocal), col = "blue", pch = ".")
+
+# 1m: gallo
+x <- log(df.data_1m$ODOlocal)
+m <- 1
+b <- -4
+y <- m * x + b #Should be 5 pt curve, and actual growth should depend inversely with si
+plot(df.data_1m$TIMESTAMP, y, col = "light green", pch = ".", ylab = "DO response index")
+
+# 1m: tross
+x <- log(df.data_1m$ODOlocal)
+m <- 1
+b <- -4
+y <- m * x + b #Should be 5 pt curve, and actual growth should depend inversely with si
+points(df.data_1m$TIMESTAMP, y, col = "light grey", pch = ".")
+
+# 7m: gallo
+x <- log(df.data_7m$ODOlocal)
+m <- 1
+b <- -4
+y <- m * x + b #Should be 5 pt curve, and actual growth should depend inversely with si
+points(df.data_7m$TIMESTAMP, y, col = "dark green", pch = ".")
+
+# 7m: tross
+m <- 1
+b <- -4
+y <- m * x + b #Should be 5 pt curve, and actual growth should depend inversely with si
+points(df.data_7m$TIMESTAMP, y, col = "black", pch = ".")
+
+legend(x = "topleft",legend = c("1m gallo", "7m gallo", "1m tross", "7m tross"),
+       col = c("light green", "dark green", "light grey", "black") , pch = 21)
+
+# Salinity response index - gallo does less well at lower salinities
+
+# Make graphs and publish them online under my plot_ly account. 
+# They are currently set as private but I can then embed them or get a URL for them.
+Sys.setenv("plotly_username"="earobert")
+Sys.setenv("plotly_api_key"="zk2ecjk0js")
+plot <- plot_ly(data = df.data_1m, x = ~TIMESTAMP, y = ~TempC, color = I("black"))
+plotly_POST(x = plot, filename = "Temp", fileopt = "new", sharing = "private")
+
+#====
+# Graph is at URL: https://plot.ly/~earobert/1/tempc-vs-timestamp/
+
+#Temp
+par(mfrow = c(1,1), omi = c(0,0,0,0), mar = c(5,4,4,2))
+plot(df.all$TIMESTAMP,df.all$TempC_1m, col = "blue", pch = 21, cex = .2, 
+     ylab = "Temp deg C", xlab = "Date", ylim = c(2,25))
+points(df.all$TIMESTAMP,df.all$TempC_7m, col = "black", pch = 21, cex = .2)
+legend(x = "topleft", col = c("blue","black"), pch = 21, legend = c("1m", "7m"))
+title(main = "Temperature")
+
+#Sal
+par(mfrow = c(1,1), omi = c(0,0,0,0), mar = c(5,4,4,2))
+plot(df.all$TIMESTAMP,df.all$Sal_1m, col = "blue", pch = 21, cex = .2, 
+     ylab = "Salinity", xlab = "Date", ylim = c(5,40))
+points(df.all$TIMESTAMP,df.all$Sal_7m, col = "black", pch = 21, cex = .2)
+legend(x = "topleft", col = c("blue","black"), pch = 21, legend = c("1m", "7m"))
+title(main = "Salinity")
+
+#Chl
+par(mfrow = c(1,1), omi = c(0,0,0,0), mar = c(5,4,4,2))
+plot(df.all$TIMESTAMP,df.all$Chlug_1m, col = "blue", pch = 21, cex = .2, 
+     ylab = "Chlorophyll ug/L", xlab = "Date")
+points(df.all$TIMESTAMP,df.all$Chlug_7m, col = "black", pch = 21, cex = .2)
+legend(x = "topleft", col = c("blue","black"), pch = 21, legend = c("1m", "7m"))
+title(main = "Chl")
+
+#pH
+par(mfrow = c(1,1), omi = c(0,0,0,0), mar = c(5,4,4,2))
+plot(df.all$TIMESTAMP,df.all$pH_1m, col = "blue", pch = 21, cex = .2, 
+     ylab = "pH", xlab = "Date")
+points(df.all$TIMESTAMP,df.all$pH_7m, col = "black", pch = 21, cex = .2)
+legend(x = "topleft", col = c("blue","black"), pch = 21, legend = c("1m", "7m"))
+title(main = "pH")
+

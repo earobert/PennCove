@@ -1,0 +1,17 @@
+{
+    "contents" : "setwd(\"~/Documents/Software/R/MultivariateStats\")\nsource(\"/Users/mollylime/Documents/Software/R/MultivariateStats/functions/biostats.R\")\nlibrary(vegan)\nlibrary(pastecs)\n\nenvdata <- read.csv('ClassDatasets/MAHA_environment.csv',header=TRUE, row.names=1)\nspedata <- read.csv('ClassDatasets/MAHA_speciesabu.csv',header=TRUE, row.names=1)\n\n#Determine variable types\nstr(envdata)\nstr(spedata)\n\n#Determine min, max, mean, var:\nstat.desc(envdata)\nstat.desc(spedata)\n\n#Missing data is assigned to median here I believe... you can also just drop it. \ntestdata <- drop.var(spedata, pct.missing=5)\nstr(testdata)\n#compare with spedata\nstr(spedata)\n#Should observe no change\n\n#Frequency of occurrence plots\nfoa.plots(spedata)\n\n#Eliminate rare species in <5 sites\ntestdata <-drop.var(spedata, min.fo=5)\nstr(spedata)\nstr(testdata)\n#45 observations of 36, now 31 variables\n\n#Eliminate abundant generalist species (decide carefully)\ntestdata <-drop.var(spedata, max.po=95)\nstr(spedata)\nstr(testdata)\n#Should observe no change here\n\n#Eliminate variables with too little variation\ntestdata <-drop.var(spedata, min.cv=5)\nstr(spedata)\nstr(testdata)\n#Should observe no change here\n\n#Deviations from the diagonal indicate non-uniformity\necdf.plots(spedata)\n\n#Evaluate the distribution for skewness\nhist.plots(spedata)\n\n#Another way to examine the distribution of data\nbox.plots(spedata)\n\n#Quantiles vs. theoretical quantiles from a normal distribution\n#If data are from a perfectly normal distristribution they will lie on a diagonal straight line\n#Deviations are deviations from the line at the tails\nqqnorm.plots(spedata)\n\n#Four of these plots on one page!\nuv.plots(spedata)\n\n#Shows log transformation plots and outputs the logged data?\ndata.trans(spedata,method=\"log\")\n\n#Sqrt for count data\ndata.trans(spedata,method=\"power\",exp=.5)\n\n#Transform into species presence/absence\ndata.trans(spedata,method=\"power\",exp=0)\n\n#decostand() is also a useful function from the vegan library... \n?decostand()\n\n#Log transformation\ntradata <- data.trans(spedata,method='log',plot=F)\n#or\ntradata <- log10(spedata+1)\n\n#-------------Evaluate the need for data standardization\n#Not necessary is CV is < 5, but a good idea if CV is >100\n#see .pdf documentation of biostats function library to check out data.stand()\n\ndata.stand(spedata,method='total',margin='row')\n\n#-------------Evaluate the dataset for outliers\n#-----computes the z-scores for each value and output has list of samples and variables that \n#are greater than a specified number of standard deviations from the mean (default =3)\nuv.outliers(envdata, id='Sinuosity:BasinAre', var='Elev', sd.limit=1)\nmv.outliers(envdata,method='euclidean', sd.limit=1) # I like this!!! Multivariate outlier test\nmv.outliers(envdata, method='mahalanobis', sd.limit=1)\n\n",
+    "created" : 1479868802241.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2030860477",
+    "id" : "5EA5EEF1",
+    "lastKnownWriteTime" : 1444538574,
+    "path" : "~/Documents/Software/R/MultivariateStats/classwork/2.dataScreening.R",
+    "project_path" : null,
+    "properties" : {
+    },
+    "relative_order" : 8,
+    "source_on_save" : false,
+    "type" : "r_source"
+}

@@ -1,0 +1,18 @@
+{
+    "contents" : "# Be sure to save .csv without as decimal not as %. \n\nsetwd(\"~/Documents/School and jobs/UW Biology/Research/Penn_Cove_monitoring/projects/Mussel Hotels/data\")\nsurvival <- read.csv('Survival.csv', stringsAsFactors = F)\nhead(survival)\nsurvival$Date <- as.Date(survival$Date,\"%m/%d/%y\")\nhead(date)\nsurvival$cumulative_survival <- as.numeric(survival$cumulative_survival)\ncumulative_survival\nplot(date, cumulative_survival)\nstr(survival)\n\nstat.desc(survival$survival)\n\nna.omit(survival)\n\n# Pick out tross and gallo, deep and shallow\ngrep(\"a\", c(\"a\",\"b\",\"c\",\"a\")) #Returns the index where a was found\n\n#subset(survival, SpeciesCode==rockfishCode[1], select = Fate)\n\ncode <- paste(survival$Species, \"\", survival$Depth)\n\nunique(code)\n\nTS <- subset(survival, code==\"trossulus  shallow\", select = c(Date, cumulative_survival))\nTD <- subset(survival, code==\"trossulus  deep\", select = c(Date, cumulative_survival))\nGS <- subset(survival, code==\"galloprovincialis  shallow\", select = c(Date, cumulative_survival))\nGD <- subset(survival, code==\"galloprovincialis  deep\", select = c(Date, cumulative_survival))\n\nTS$cumulative_survival\n\nplot(TS$Date, TS$cumulative_survival*100, ylim=c(0,100), pch = 21, col = \"blue\", type = 'p', xaxis = )\npoints(TD$Date, TD$cumulative_survival*100, pch = 19, col = \"blue\", type = 'p')\npoints(GS$Date, GS$cumulative_survival*100, pch = 21, col = \"green\", type = 'p')\npoints(GD$Date, GD$cumulative_survival*100, pch = 19, col = \"green\", type = 'p')\n\n",
+    "created" : 1479867308256.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1580789066",
+    "id" : "52B8D1C8",
+    "lastKnownWriteTime" : 1480141692,
+    "path" : "~/Documents/School and jobs/UW Biology/Research/Penn_Cove_monitoring/projects/Mussel Hotels/data/survival.R",
+    "project_path" : null,
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "type" : "r_source"
+}

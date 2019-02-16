@@ -1,0 +1,18 @@
+{
+    "contents" : "\n# MODIS data\n\n#====\n# Examples of each step\n#====\n# Upload data or files with web scraping in r\n# https://blog.rstudio.org/2014/11/24/rvest-easy-web-scraping-with-r/\ninstall.packages(\"rvest\")\nlibrary(rvest)\nlego_movie <- read_html(\"http://www.imdb.com/title/tt1490017/\")\n\nlego_movie %>% \n  html_node(\"strong span\") %>%\n  html_text() %>%\n  as.numeric()\n#> [1] 7.9\n\nhelp(\"html_node\")\n\n#====\n# Open .nc files \n# http://gis.stackexchange.com/questions/120900/plotting-netcdf-file-using-lat-and-lon-contained-in-variables\n\n# First, estimate the extent.\n# We start with the lat and long, then project it to the Lambert Conformal projection\nlibrary(raster)\ninputfile <- \"pr_averaged_Med_CORDEX_ATM.1980-2008.nc\"\n\n# Grab the lat and lon from the data\nlat <- raster(inputfile, varname=\"xlat\")\nlon <- raster(inputfile, varname=\"xlon\")\n\n# Convert to points and match the lat and lons\nplat <- rasterToPoints(lat)\nplon <- rasterToPoints(lon)\nlonlat <- cbind(plon[,3], plat[,3])\n\n# Specify the lonlat as spatial points with projection as long/lat\nlonlat <- SpatialPoints(lonlat, proj4string = CRS(\"+proj=longlat +datum=WGS84\"))\n\n# Need the rgdal package to project it to the original coordinate system\nlibrary(\"rgdal\")\n\n# My best guess at the proj4 string from the information given\nmycrs <- CRS(\"+proj=lcc +lat_1=35 +lat_2=51 +lat_0=39 +lon_0=14 +k=0.684241 +units=m +datum=WGS84 +no_defs\")\nplonlat <- spTransform(lonlat, CRSobj = mycrs)\n# Take a look\nplonlat\nextent(plonlat)\n\n# Yay! Now we can properly set the coordinate information for the raster\npr <- raster(inputfile, varname=\"pr\")\n# Fix the projection and extent\nprojection(pr) <- mycrs\nextent(pr) <- extent(plonlat)\n# Take a look\npr\nplot(pr)\n\n# Project to long lat grid\nr <- projectRaster(pr, crs=CRS(\"+proj=longlat +datum=WGS84\"))\n# Take a look\nr\nplot(r)\n# Add contours\ncontour(r, add=TRUE)\n\n# Add country lines\nlibrary(\"maps\")\nmap(add=TRUE, col=\"blue\")\n",
+    "created" : 1476408628421.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1531035155",
+    "id" : "9A08B361",
+    "lastKnownWriteTime" : 1476408733,
+    "path" : "~/Documents/School and jobs/UW Biology/Research/Penn_Cove_monitoring/projects/SONDE_data/SONDE_data/MODIS_Import.R",
+    "project_path" : "MODIS_Import.R",
+    "properties" : {
+        "tempName" : "Untitled2"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "type" : "r_source"
+}
